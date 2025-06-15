@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频转MP3工具</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="快速将视频文件转换为MP3音频，支持多种视频格式">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <span class="logo-icon">🎵</span>
+                    VideoToMP3
+                </h1>
+                <nav class="nav">
+                    <button class="nav-btn active" data-tab="upload">上传转换</button>
+                    <button class="nav-btn" data-tab="tasks">任务列表</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="main">
+        <div class="container">
+            <!-- 上传转换标签页 -->
+            <div id="upload-tab" class="tab-content active">
+                <!-- 上传区域 -->
+                <section class="upload-section">
+                    <div class="upload-card">
+                        <div class="upload-zone" id="upload-zone">
+                            <div class="upload-icon">📁</div>
+                            <h3 class="upload-title">拖拽文件到这里或点击选择</h3>
+                            <p class="upload-desc">支持 MP4, AVI, MOV, WMV, FLV, WEBM, MKV 等格式</p>
+                            <input type="file" id="file-input" accept="video/*" hidden>
+                            <button class="upload-btn" id="select-file-btn">选择视频文件</button>
+                        </div>
+                        
+                        <!-- 文件信息 -->
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <div class="file-preview">
+                                <div class="file-icon">🎬</div>
+                                <div class="file-details">
+                                    <h4 class="file-name" id="file-name"></h4>
+                                    <p class="file-size" id="file-size"></p>
+                                </div>
+                                <button class="remove-file-btn" id="remove-file-btn">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- URL输入区域 -->
+                <section class="url-section">
+                    <div class="url-card">
+                        <h3 class="section-title">或输入视频链接</h3>
+                        <div class="url-input-group">
+                            <div class="form-group">
+                                <label for="video-url">视频链接</label>
+                                <input type="url" id="video-url" placeholder="输入抖音/快手视频链接，或直接粘贴分享文本" required>
+                                <small class="help-text">
+                                    支持：
+                                    <br>• 直接链接：https://v.douyin.com/xxxxxxx/
+                                    <br>• 分享文本：包含视频链接的完整分享内容
+                                </small>
+                            </div>
+                            <button class="url-submit-btn" id="url-submit-btn">添加链接</button>
+                        </div>
+                        <p class="url-tip">💡 支持抖音、快手、YouTube等主流平台视频链接</p>
+                    </div>
+                </section>
+
+                <!-- 转换设置 -->
+                <section class="settings-section" id="settings-section" style="display: none;">
+                    <div class="settings-card">
+                        <h3 class="section-title">转换设置</h3>
+                        <div class="settings-grid">
+                            <div class="setting-group">
+                                <label class="setting-label">音频质量</label>
+                                <select class="setting-select" id="bitrate-select">
+                                    <option value="128k">标准质量 (128kbps)</option>
+                                    <option value="192k" selected>高质量 (192kbps)</option>
+                                    <option value="256k">超高质量 (256kbps)</option>
+                                    <option value="320k">最高质量 (320kbps)</option>
+                                </select>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">采样率</label>
+                                <select class="setting-select" id="sample-rate-select">
+                                    <option value="22050">22.05 kHz</option>
+                                    <option value="44100" selected>44.1 kHz</option>
+                                    <option value="48000">48 kHz</option>
+                                </select>
+                            </div>
+                            <div class="setting-group full-width">
+                                <label class="setting-label">文件标题（可选）</label>
+                                <input type="text" 
+                                       class="setting-input" 
+                                       id="file-title" 
+                                       placeholder="输入音频文件标题...">
+                            </div>
+                        </div>
+                        <div class="convert-actions">
+                            <button class="convert-btn" id="convert-btn">
+                                <span class="btn-icon">🚀</span>
+                                开始转换
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 转换进度 -->
+                <section class="progress-section" id="progress-section" style="display: none;">
+                    <div class="progress-card">
+                        <h3 class="section-title">转换进度</h3>
+                        <div class="progress-info">
+                            <div class="progress-status">
+                                <span class="status-text" id="status-text">准备中...</span>
+                                <span class="progress-percent" id="progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                            <div class="progress-details">
+                                <p class="estimated-time" id="estimated-time">预计时间：计算中...</p>
+                            </div>
+                        </div>
+                        <div class="progress-actions">
+                            <button class="cancel-btn" id="cancel-btn">取消转换</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 下载区域 -->
+                <section class="download-section" id="download-section" style="display: none;">
+                    <div class="download-card">
+                        <div class="download-success">
+                            <div class="success-icon">✅</div>
+                            <h3 class="success-title">转换完成！</h3>
+                            <p class="success-desc">您的MP3文件已准备就绪</p>
+                        </div>
+                        <div class="download-info">
+                            <div class="download-file-info">
+                                <h4 class="download-file-name" id="download-file-name">音频文件.mp3</h4>
+                                <p class="download-file-size" id="download-file-size">大小：计算中...</p>
+                            </div>
+                        </div>
+                        <div class="download-actions">
+                            <button class="download-btn" id="download-btn">
+                                <span class="btn-icon">⬇️</span>
+                                下载MP3
+                            </button>
+                            <button class="new-convert-btn" id="new-convert-btn">转换新文件</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 任务列表标签页 -->
+            <div id="tasks-tab" class="tab-content">
+                <section class="tasks-section">
+                    <div class="tasks-header">
+                        <h3 class="section-title">转换历史</h3>
+                        <button class="refresh-btn" id="refresh-tasks-btn">🔄 刷新</button>
+                    </div>
+                    <div class="tasks-container" id="tasks-container">
+                        <div class="loading-tasks" id="loading-tasks">
+                            <div class="loading-spinner"></div>
+                            <p>加载任务列表中...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">© 2025 VideoToMP3. 快速、安全的视频转换工具</p>
+        </div>
+    </footer>
+
+    <!-- 消息提示 -->
+    <div class="toast" id="toast">
+        <div class="toast-content">
+            <span class="toast-icon" id="toast-icon"></span>
+            <span class="toast-message" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+</body>
+</html> 

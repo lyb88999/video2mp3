@@ -1,0 +1,72 @@
+# Docker部署配置
+app:
+  name: "Video Converter"
+  version: "1.0.0"
+  mode: "release"
+  port: 8080
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: "8080"
+  mode: "release"
+  read_timeout: 30
+  write_timeout: 30
+
+# 数据库配置
+database:
+  host: "mysql"
+  port: 3306
+  user: "video_user"
+  password: "video_pass_2024"
+  name: "video_converter"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: "1h"
+
+# Redis配置
+redis:
+  host: "redis"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+# 文件存储配置
+file:
+  upload_dir: "./uploads"
+  output_dir: "./output"
+  temp_dir: "./temp"
+  max_file_size: 524288000  # 500MB
+  allowed_types:
+    - "video/mp4"
+    - "video/avi"
+    - "video/mov"
+    - "video/wmv"
+    - "video/flv"
+    - "video/webm"
+    - "video/mkv"
+    - "video/x-msvideo"
+
+# FFmpeg配置
+ffmpeg:
+  binary_path: "ffmpeg"
+  audio_codec: "libmp3lame"
+  audio_bitrate: "192k"
+  sample_rate: "44100"
+
+# 视频下载服务配置
+download:
+  service_url: "http://download-service:80/api/download"
+  timeout: 300
+  enable_prefix: true
+  disable_watermark: true
+
+# 日志配置
+log:
+  level: "info"
+  file_path: "./logs/app.log"
+  max_size: 100
+  max_backups: 7
+  max_age: 30
+  compress: true 

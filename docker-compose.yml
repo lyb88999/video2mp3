@@ -1,0 +1,141 @@
+version: '3.9'
+
+services:
+  # 主应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-converter-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      download-service:
+        condition: service_healthy
+    environment:
+      - GIN_MODE=release
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./docker/config.yaml:/app/config.yaml
+    networks:
+      - video-converter-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: video-converter-mysql-fresh
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-video_converter_2024}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-video_converter}
+      MYSQL_USER: ${MYSQL_USER:-video_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-video_pass_2024}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data_fresh:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3308:3306"
+    networks:
+      - video-converter-net
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=128M
+      --max-connections=50
+      --innodb-use-native-aio=0
+      --innodb-flush-method=fsync
+      --authentication-policy=mysql_native_password
+      --host-cache-size=0
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-video_converter_2024}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: video-converter-redis
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    networks:
+      - video-converter-net
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: video-converter-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "9002:80"
+      - "9443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - video-converter-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # 抖音/TikTok视频下载服务
+  download-service:
+    image: evil0ctal/douyin_tiktok_download_api:latest
+    container_name: video-download-service
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - video-converter-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  video-converter-net:
+    driver: bridge
+
+volumes:
+  mysql_data_fresh:
+    driver: local
+  redis_data:
+    driver: local 

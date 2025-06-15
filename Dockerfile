@@ -1,0 +1,89 @@
+# 快速构建版本 - 多阶段构建
+FROM golang:1.22-alpine AS builder
+
+# 设置Alpine镜像源为国内镜像（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 设置工作目录
+WORKDIR /app
+
+# 一次性安装所有构建依赖，减少层数
+RUN apk update && apk add --no-cache \
+    git \
+    ca-certificates \
+    build-base \
+    && rm -rf /var/cache/apk/*
+
+# 设置Go环境变量（使用国内代理）
+ENV GOPROXY=https://goproxy.cn,direct \
+    GOSUMDB=sum.golang.google.cn \
+    GOPRIVATE="" \
+    GO111MODULE=on \
+    CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+# 先复制go.mod和go.sum，利用Docker缓存
+COPY go.mod go.sum ./
+
+# 下载依赖（这一层会被缓存）
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 构建应用（使用优化参数）
+RUN go build -ldflags="-w -s" -a -installsuffix cgo -o main cmd/server/main.go
+
+# 运行阶段 - 使用更小的基础镜像
+FROM alpine:3.18
+
+# 设置Alpine镜像源为国内镜像
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 更新包索引并安装运行时依赖（分步骤，便于调试）
+RUN apk update --no-cache && \
+    apk upgrade --no-cache && \
+    apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    wget \
+        curl && \
+    apk add --no-cache \
+        ffmpeg \
+        ffmpeg-libs && \
+    rm -rf /var/cache/apk/* && \
+    rm -rf /tmp/*
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 创建非root用户
+RUN addgroup -g 1001 appgroup && \
+    adduser -D -s /bin/sh -u 1001 -G appgroup appuser
+
+# 设置工作目录
+WORKDIR /app
+
+# 创建必要的目录并设置权限
+RUN mkdir -p uploads output temp logs web && \
+    chown -R appuser:appgroup /app
+
+# 从构建阶段复制文件
+COPY --from=builder --chown=appuser:appgroup /app/main .
+COPY --from=builder --chown=appuser:appgroup /app/web ./web
+COPY --from=builder --chown=appuser:appgroup /app/config.yaml .
+
+# 切换到非root用户
+USER appuser
+
+# 暴露端口
+EXPOSE 8080
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# 启动应用
+CMD ["./main"] 

@@ -1,0 +1,86 @@
+# HTTPS配置模板
+# 使用前请先获取SSL证书并替换域名
+
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+    
+    # 重定向到HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+
+    # SSL证书配置
+    ssl_certificate /etc/nginx/ssl/your-domain.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/your-domain.com.key;
+    
+    # SSL安全配置
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # 安全头部
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self'; connect-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:;" always;
+
+    # 日志配置
+    access_log /var/log/nginx/video-converter-ssl.access.log;
+    error_log /var/log/nginx/video-converter-ssl.error.log;
+
+    # 健康检查
+    location /health {
+        proxy_pass http://app:8080/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API代理
+    location /api/ {
+        proxy_pass http://app:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 文件上传配置
+        proxy_request_buffering off;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    # 静态文件
+    location /static/ {
+        proxy_pass http://app:8080/static/;
+        proxy_set_header Host $host;
+        proxy_cache_valid 200 1d;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # 主页面
+    location / {
+        proxy_pass http://app:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 错误页面
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+} 

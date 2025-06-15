@@ -1,0 +1,62 @@
+# 开发环境配置 - 不依赖外部数据库
+app:
+  name: "Video Converter Dev"
+  version: "1.0.0"
+  mode: "debug"
+  port: 8080
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: "8080"
+  mode: "debug"
+  read_timeout: 30
+  write_timeout: 30
+
+# 数据库配置 - 使用SQLite（轻量级）
+database:
+  type: "sqlite"
+  path: "./data/video_converter.db"
+  max_idle_conns: 5
+  max_open_conns: 10
+  conn_max_lifetime: "1h"
+
+# Redis配置 - 禁用（使用内存缓存）
+redis:
+  enabled: false
+  host: ""
+  port: 0
+  password: ""
+  db: 0
+
+# 文件存储配置
+file:
+  upload_dir: "./uploads"
+  output_dir: "./output"
+  temp_dir: "./temp"
+  max_file_size: 524288000  # 500MB
+  allowed_types:
+    - "video/mp4"
+    - "video/avi"
+    - "video/mov"
+    - "video/wmv"
+    - "video/flv"
+    - "video/webm"
+    - "video/mkv"
+    - "video/x-msvideo"
+
+# FFmpeg配置
+ffmpeg:
+  binary_path: "ffmpeg"
+  audio_codec: "libmp3lame"
+  audio_bitrate: "192k"
+  sample_rate: "44100"
+
+# 日志配置
+log:
+  level: "debug"
+  file_path: "./logs/app.log"
+  max_size: 100
+  max_backups: 7
+  max_age: 30
+  compress: true
